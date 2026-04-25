@@ -88,7 +88,7 @@ export default function Nutrition() {
 
         <Link
           to="/recipes"
-          state={{ ingredient: data.ingredient }}
+          state={{ ingredient: data.ingredient.replace(/_/g, " ") }}
           className="block w-full bg-black text-white font-syne font-bold py-4 rounded-xl text-center hover:bg-gray-800 transition-colors"
         >
           Lihat Resep dari Bahan Ini →

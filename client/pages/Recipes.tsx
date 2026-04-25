@@ -44,7 +44,7 @@ export default function Recipes() {
 
   useEffect(() => {
     if (!ingredient) { setLoading(false); return; }
-    fetch(`${API_BASE}/api/recipes/search?ingredients=${encodeURIComponent(ingredient)}&number=4`)
+    fetch(`${API_BASE}/api/recipes/search?ingredients=${encodeURIComponent(ingredient.replace(/_/g, " "))}&number=6`)
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
