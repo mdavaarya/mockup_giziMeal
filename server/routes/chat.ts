@@ -16,6 +16,8 @@ Selalu berikan informasi yang akurat dan berbasis ilmu gizi.
 Jika ditanya resep, berikan langkah-langkah yang praktis.
 Gunakan format yang rapi dengan poin-poin jika perlu.`;
 
+const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
+
 const chat: RequestHandler = async (req, res) => {
   const { messages } = req.body;
 
@@ -25,52 +27,53 @@ const chat: RequestHandler = async (req, res) => {
   }
 
   if (!GEMINI_KEY) {
-    res.status(500).json({ error: "GEMINI_API_KEY belum diatur di .env" });
+    res.status(500).json({ error: "GEMINI_API_KEY belum diatur di Railway Variables" });
     return;
   }
 
-  try {
-    // Gemini pakai role "user" dan "model" (bukan "assistant")
-    const geminiMessages = messages.map((m: { role: string; content: string }) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
+  const geminiMessages = messages.map((m: { role: string; content: string }) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: SYSTEM_PROMPT }],
-          },
-          contents: geminiMessages,
-          generationConfig: {
-            maxOutputTokens: 800,
-            temperature: 0.7,
-          },
-        }),
+  // Coba beberapa model sampai berhasil
+  for (const model of MODELS) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents: geminiMessages,
+            generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
+          }),
+        }
+      );
+
+      // Kalau rate limit, coba model berikutnya
+      if (response.status === 429 || response.status === 402) continue;
+
+      const data = (await response.json()) as any;
+
+      if (!response.ok) {
+        console.error(`Gemini ${model} error:`, data);
+        continue;
       }
-    );
 
-    const data = (await response.json()) as any;
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+        "Maaf, saya tidak dapat menjawab saat ini.";
 
-    if (!response.ok) {
-      console.error("Gemini error:", data);
-      res.status(response.status).json({ error: data.error?.message || "Gemini API error" });
+      res.json({ reply, model });
       return;
+    } catch (err) {
+      console.error(`Gemini ${model} failed:`, err);
+      continue;
     }
-
-    const reply =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Maaf, saya tidak dapat menjawab saat ini.";
-
-    res.json({ reply });
-  } catch (err) {
-    console.error("Chat error:", err);
-    res.status(500).json({ error: "Gagal menghubungi GiziBot" });
   }
+
+  res.status(503).json({ error: "Semua model Gemini sedang tidak tersedia. Coba lagi sebentar." });
 };
 
 router.post("/", chat);
