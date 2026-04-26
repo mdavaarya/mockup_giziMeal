@@ -16,7 +16,7 @@ Selalu berikan informasi yang akurat dan berbasis ilmu gizi.
 Jika ditanya resep, berikan langkah-langkah yang praktis.
 Gunakan format yang rapi dengan poin-poin jika perlu.`;
 
-const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
+const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash-lite"];
 
 const chat: RequestHandler = async (req, res) => {
   const { messages } = req.body;
